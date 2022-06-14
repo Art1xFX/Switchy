@@ -2,18 +2,6 @@
 
 int main(int argc, char** argv)
 {
-	if (argc > 1 && strcmp(argv[1], "nopopup") == 0)
-	{
-		settings.popup = FALSE;
-	}
-	else
-	{
-		settings.popup = GetOSVersion() >= 10;
-	}
-#if _DEBUG
-	printf("Pop-up %s\n", settings.popup ? "enabled" : "disabled");
-#endif
-
 	HANDLE hMutex = CreateMutex(0, 0, "Switchy");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
@@ -40,26 +28,6 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-DWORD GetOSVersion()
-{
-	HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
-	RTL_OSVERSIONINFOW osvi = { 0 };
-
-	if (hMod)
-	{
-		RtlGetVersionPtr p = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
-
-		if (p)
-		{
-			osvi.dwOSVersionInfoSize = sizeof(osvi);
-			p(&osvi);
-		}
-	}
-
-	return osvi.dwMajorVersion;
-}
-
-
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	KBDLLHOOKSTRUCT* key = (KBDLLHOOKSTRUCT*)lParam;
@@ -84,12 +52,6 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 			if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
 			{
 				keystrokeProcessed = FALSE;
-
-				if (winPressed)
-				{
-					winPressed = FALSE;
-					ReleaseKey(VK_LWIN);
-				}
 			}
 
 			if (!enabled)
@@ -108,21 +70,11 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 				}
 				else
 				{
-					if (settings.popup)
+					HWND hWnd = GetForegroundWindow();
+					if (hWnd)
 					{
-						PressKey(VK_LWIN);
-						PressKey(VK_SPACE);
-						ReleaseKey(VK_SPACE);
-						winPressed = TRUE;
-					}
-					else
-					{
-						HWND hWnd = GetForegroundWindow();
-						if (hWnd)
-						{
-							hWnd = GetAncestor(hWnd, GA_ROOTOWNER);
-							PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)HKL_NEXT);
-						}
+						hWnd = GetAncestor(hWnd, GA_ROOTOWNER);
+						PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)HKL_NEXT);
 					}
 				}
 			}
